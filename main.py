@@ -1,5 +1,6 @@
 # imports
 import argparse
+from datetime import datetime
 import os
 from tqdm import tqdm
 
@@ -28,7 +29,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--experiment', type=str, default='experiment', metavar='E',
+parser.add_argument('--experiment', type=str, default=None, metavar='E',
                     help='folder where experiment outputs are located.')
 parser.add_argument('--save_freq', type=int, default=10, metavar='f',
                     help='frequency the model weights are saved')
@@ -38,16 +39,18 @@ use_cuda = torch.cuda.is_available()
 torch.manual_seed(args.seed)
 
 # Create experiment folder
+if args.experiment is None:
+    args.experiment = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 os.makedirs(args.experiment, exist_ok=True)
 
 train_loader = torch.utils.data.DataLoader(
     datasets.ImageFolder(args.data + '/train_images',
-                         transform=data_transforms),
+                         transform=data_transforms['train']),
     batch_size=args.batch_size, shuffle=True, num_workers=1)
 val_loader = torch.utils.data.DataLoader(
     datasets.ImageFolder(args.data + '/val_images',
-                         transform=data_transforms),
-    batch_size=args.batch_size, shuffle=False, num_workers=1)
+                         transform=data_transforms['test']),
+    batch_size=1, shuffle=False, num_workers=1)
 
 # Neural network and optimizer
 # We define neural net in model.py so that it can be reused by the evaluate.py script
@@ -58,7 +61,18 @@ if use_cuda:
 else:
     print('Using CPU')
 
-optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+#optimizer = optim.SGD(
+#    model.parameters(),
+#    lr=args.lr,
+#    momentum=args.momentum
+#)
+optimizer = optim.Adam(
+    model.parameters(),
+    lr=args.lr
+)
+
+scheduler = None
+
 
 def train(epoch):
     model.train()
@@ -71,6 +85,8 @@ def train(epoch):
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
+        if scheduler is not None:
+            scheduler.step()
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
