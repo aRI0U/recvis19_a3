@@ -14,7 +14,8 @@ class Net(nn.Module):
         self.softmax = nn.Softmax()
 
     def forward(self, x):
-        x = self.resnet(x)
+        with torch.no_grad():
+            x = self.resnet(x)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
