@@ -23,8 +23,8 @@ data_transforms['train'] = transforms.Compose([
 ])
 
 data_transforms['test'] = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
+    transforms.Resize(320),
+    transforms.CenterCrop(288),
     transforms.ToTensor(),
     transforms.Normalize(mean=mean, std=std)
 ])
