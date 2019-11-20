@@ -1,6 +1,7 @@
 # imports
 import argparse
 from datetime import datetime
+import glob
 import os
 from tqdm import tqdm
 
@@ -40,7 +41,7 @@ torch.manual_seed(args.seed)
 
 # Create experiment folder
 if args.experiment is None:
-    args.experiment = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+    args.experiment = 'exp_%04d' % (len(glob.glob('exp_*'))+1)
 os.makedirs(args.experiment, exist_ok=True)
 
 train_loader = torch.utils.data.DataLoader(
@@ -71,10 +72,19 @@ optimizer = optim.Adam(
     lr=args.lr
 )
 
-scheduler = None
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer,
+    mode='max',
+    factor=0.1,
+    patience=10,
+    verbose=True,
+    threshold=0.01,
+    threshold_mode='abs'
+)
 
 
 def train(epoch):
+
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         if use_cuda:
@@ -85,8 +95,8 @@ def train(epoch):
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        if scheduler is not None:
-            scheduler.step()
+
+
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -111,11 +121,13 @@ def validation():
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
         validation_loss, correct, len(val_loader.dataset),
         100. * correct / len(val_loader.dataset)))
+    return correct/len(val_loader.dataset)
 
 
 for epoch in range(1, args.epochs + 1):
     train(epoch)
-    validation()
+    val_score = validation()
+    scheduler.step(val_score)
     if epoch % args.save_freq == 0:
         model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
         torch.save(model.state_dict(), model_file)
