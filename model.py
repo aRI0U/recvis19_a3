@@ -12,8 +12,10 @@ class Net(nn.Module):
         self.resnet = torchvision.models.resnext101_32x8d(pretrained=True)
         for param in self.resnet.parameters():
             param.requires_grad = False
-        self.resnet.fc = nn.Linear(2048, n_classes)
+        in_features = self.resnet.fc.in_features
+        self.resnet.fc = nn.Linear(in_features,  n_classes)
+        self.dropout = nn.Dropout()
 
     def forward(self, x):
         x = self.resnet(x)
-        return x
+        return self.dropout(x)

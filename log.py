@@ -10,4 +10,4 @@ class Log:
     def info(self, message):
         print(message)
         with open(self.file, 'a') as f:
-            f.write(message)
+            f.write(message + '\n')

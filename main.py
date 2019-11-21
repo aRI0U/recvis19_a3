@@ -25,8 +25,6 @@ parser.add_argument('--epochs', type=int, default=500, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                     help='learning rate (default: 0.01)')
-parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
-                    help='SGD momentum (default: 0.5)')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=5, metavar='N',
@@ -46,12 +44,19 @@ if args.experiment is None:
 os.makedirs(args.experiment, exist_ok=True)
 log = Log(args.experiment)
 
-train_loader = torch.utils.data.DataLoader(
-    datasets.ImageFolder(args.data + '/train_images',
-                         transform=data_transforms['train']),
+train_set = datasets.ImageFolder(
+    os.path.join(args.data, 'train_images'),
+    transform=data_transforms['train']
+)
+
+val_set = datasets.ImageFolder(
+    os.path.join(args.data, 'val_images'),
+    transform=data_transforms['test']
+)
+
+train_loader = torch.utils.data.DataLoader(train_set,
     batch_size=args.batch_size, shuffle=True, num_workers=1)
-val_loader = torch.utils.data.DataLoader(
-    datasets.ImageFolder(args.data + '/val_images',
+val_loader = torch.utils.data.DataLoader(val_set,
                          transform=data_transforms['test']),
     batch_size=1, shuffle=False, num_workers=1)
 
@@ -64,11 +69,6 @@ if use_cuda:
 else:
     print('Using CPU')
 
-#optimizer = optim.SGD(
-#    model.parameters(),
-#    lr=args.lr,
-#    momentum=args.momentum
-#)
 optimizer = optim.Adam(
     model.parameters(),
     lr=args.lr
@@ -84,9 +84,7 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     threshold_mode='abs'
 )
 
-
 def train(epoch):
-
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         if use_cuda:
@@ -97,7 +95,6 @@ def train(epoch):
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-
 
         if batch_idx % args.log_interval == 0:
             log.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -125,11 +122,11 @@ def validation():
         100. * correct / len(val_loader.dataset)))
     return correct/len(val_loader.dataset)
 
-
-for epoch in range(1, args.epochs + 1):
-    train(epoch)
-    val_score = validation()
-    scheduler.step(val_score)
-    if epoch % args.save_freq == 0:
-        model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
-        torch.save(model.state_dict(), model_file)
+if __name__ == '__main__':
+    for epoch in range(1, args.epochs + 1):
+        train(epoch)
+        val_score = validation()
+        scheduler.step(val_score)
+        if epoch % args.save_freq == 0:
+            model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
+            torch.save(model.state_dict(), model_file)
