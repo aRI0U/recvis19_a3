@@ -12,6 +12,7 @@ from torchvision import datasets
 
 # Data initialization and loading
 from data import data_transforms
+from log import Log
 from model import Net
 
 # Training settings
@@ -43,6 +44,7 @@ torch.manual_seed(args.seed)
 if args.experiment is None:
     args.experiment = 'exp_%04d' % (len(glob.glob('exp_*'))+1)
 os.makedirs(args.experiment, exist_ok=True)
+log = Log(args.experiment)
 
 train_loader = torch.utils.data.DataLoader(
     datasets.ImageFolder(args.data + '/train_images',
@@ -98,7 +100,7 @@ def train(epoch):
 
 
         if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            log.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.data.item()))
 
@@ -118,7 +120,7 @@ def validation():
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
     validation_loss /= len(val_loader.dataset)
-    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+    log.info('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
         validation_loss, correct, len(val_loader.dataset),
         100. * correct / len(val_loader.dataset)))
     return correct/len(val_loader.dataset)
@@ -131,4 +133,3 @@ for epoch in range(1, args.epochs + 1):
     if epoch % args.save_freq == 0:
         model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
         torch.save(model.state_dict(), model_file)
-        # print('Saved model to ' + model_file + '. You can run `python evaluate.py --model ' + model_file + '` to generate the Kaggle formatted csv file\n')
