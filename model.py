@@ -14,8 +14,7 @@ class Net(nn.Module):
             param.requires_grad = False
         in_features = self.resnet.fc.in_features
         self.resnet.fc = nn.Linear(in_features,  n_classes)
-        self.dropout = nn.Dropout()
 
     def forward(self, x):
         x = self.resnet(x)
-        return self.dropout(x)
+        return x
