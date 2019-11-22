@@ -13,7 +13,7 @@ class Net(nn.Module):
         for param in self.resnet.parameters():
             param.requires_grad = False
         in_features = self.resnet.fc.in_features
-        self.resnet.fc = nn.Linear(in_features,  n_classes)
+        self.resnet.fc = nn.Linear(in_features, n_classes)
 
     def forward(self, x):
         x = self.resnet(x)

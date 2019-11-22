@@ -11,7 +11,7 @@ import torch.optim as optim
 from torchvision import datasets
 
 # Data initialization and loading
-from data import data_transforms
+from data import data_transforms, StudentDataset
 from log import Log
 from model import Net
 
@@ -21,8 +21,8 @@ parser.add_argument('--data', type=str, default='bird_dataset', metavar='D',
                     help="folder where data is located. train_images/ and val_images/ need to be found in the folder")
 parser.add_argument('--batch-size', type=int, default=64, metavar='B',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=500, metavar='N',
-                    help='number of epochs to train (default: 500)')
+parser.add_argument('--epochs', type=int, default=200, metavar='N',
+                    help='number of epochs to train (default: 200)')
 parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                     help='learning rate (default: 0.01)')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -57,7 +57,6 @@ val_set = datasets.ImageFolder(
 train_loader = torch.utils.data.DataLoader(train_set,
     batch_size=args.batch_size, shuffle=True, num_workers=1)
 val_loader = torch.utils.data.DataLoader(val_set,
-                         transform=data_transforms['test']),
     batch_size=1, shuffle=False, num_workers=1)
 
 # Neural network and optimizer
@@ -122,11 +121,23 @@ def validation():
         100. * correct / len(val_loader.dataset)))
     return correct/len(val_loader.dataset)
 
-if __name__ == '__main__':
-    for epoch in range(1, args.epochs + 1):
-        train(epoch)
-        val_score = validation()
-        scheduler.step(val_score)
-        if epoch % args.save_freq == 0:
-            model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
-            torch.save(model.state_dict(), model_file)
+
+for epoch in range(1, args.epochs + 1):
+    if epoch%20 == 0:
+        student_set = StudentDataset(
+            os.path.join(args.data, 'test_images'),
+            model,
+            model.state_dict(),
+            ratio=epoch/200,
+            transform=data_transforms
+        )
+        concat_set = torch.utils.data.ConcatDataset([train_set, student_set])
+        train_loader = torch.utils.data.DataLoader(concat_set,
+            batch_size=args.batch_size, shuffle=True, num_workers=1)
+
+    train(epoch)
+    val_score = validation()
+    scheduler.step(val_score)
+    if epoch % args.save_freq == 0:
+        model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
+        torch.save(model.state_dict(), model_file)
