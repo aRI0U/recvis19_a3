@@ -18,18 +18,18 @@ mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
 data_transforms = {}
 
 data_transforms['train'] = transforms.Compose([
-    transforms.Resize(256),
-    transforms.RandomResizedCrop(224),
+    transforms.Resize(320),
+    transforms.RandomResizedCrop(288),
     transforms.RandomHorizontalFlip(),
-    transforms.ColorJitter(),
+    transforms.ColorJitter(brightness=1, contrast=0, saturation=0, hue=0),
     transforms.ToTensor(),
     transforms.Normalize(mean=mean, std=std),
     transforms.RandomErasing()
 ])
 
 data_transforms['test'] = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
+    transforms.Resize(320),
+    transforms.CenterCrop(288),
     transforms.ToTensor(),
     transforms.Normalize(mean=mean, std=std)
 ])
@@ -70,7 +70,8 @@ class StudentDataset(torch.utils.data.Dataset):
         self.partition = np.argpartition(scores, last_idx)
         scores = scores[self.partition]
         self.classes = self.classes[self.partition][:last_idx]
-        print('%d elements added to dataset. Maximal uncertainty: %.3f\n' % (last_idx, scores[last_idx]))
+        max_uncertain = scores[last_idx] if last_idx < len(scores) else scores[-1]
+        print('%d elements added to dataset. Maximal uncertainty: %.3f\n' % (last_idx, max_uncertain))
 
     def __len__(self):
         return len(self.classes)

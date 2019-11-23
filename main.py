@@ -55,9 +55,9 @@ val_set = datasets.ImageFolder(
 )
 
 train_loader = torch.utils.data.DataLoader(train_set,
-    batch_size=args.batch_size, shuffle=True, num_workers=1)
+    batch_size=args.batch_size, shuffle=True, num_workers=4)
 val_loader = torch.utils.data.DataLoader(val_set,
-    batch_size=1, shuffle=False, num_workers=1)
+    batch_size=1, shuffle=False, num_workers=4)
 
 # Neural network and optimizer
 # We define neural net in model.py so that it can be reused by the evaluate.py script
