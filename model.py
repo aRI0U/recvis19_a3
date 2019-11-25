@@ -13,9 +13,12 @@ class Net(nn.Module):
         for param in self.resnet.parameters():
             param.requires_grad = False
         in_features = self.resnet.fc.in_features
-        self.resnet.fc = nn.Linear(in_features,  n_classes)
-        self.dropout = nn.Dropout()
+        self.resnet.fc = nn.Sequential(
+            nn.Linear(in_features,  4096),
+            nn.ReLU(),
+            nn.Linear(4096, n_classes)
+        )
 
     def forward(self, x):
         x = self.resnet(x)
-        return self.dropout(x)
+        return x
