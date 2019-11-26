@@ -1,16 +1,12 @@
 # imports
 import argparse
-from datetime import datetime
 import glob
 import os
-from tqdm import tqdm
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torchvision import datasets
 
-# Data initialization and loading
 from data import data_transforms, StudentDataset
 from log import Log
 from model import Net
@@ -46,6 +42,7 @@ if args.experiment is None:
 os.makedirs(args.experiment, exist_ok=True)
 log = Log(args.experiment)
 
+# Load data
 train_set = datasets.ImageFolder(
     os.path.join(args.data, 'train_images'),
     transform=data_transforms['train']
@@ -70,7 +67,7 @@ if use_cuda:
 else:
     print('Using CPU')
 
-optimizer = optim.Adam(
+optimizer = torch.optim.Adam(
     model.parameters(),
     lr=args.lr
 )
@@ -123,8 +120,9 @@ def validation():
         100. * correct / len(val_loader.dataset)))
     return correct/len(val_loader.dataset)
 
-max_score = 0.80
 for epoch in range(1, args.epochs + 1):
+
+    # if enabled, unlabeled data is added to training set
     if args.student and epoch%args.student == 0:
         threshold = 1 - 10/epoch
         student_set = StudentDataset(
@@ -139,11 +137,12 @@ for epoch in range(1, args.epochs + 1):
         train_loader = torch.utils.data.DataLoader(concat_set,
             batch_size=args.batch_size, shuffle=True, num_workers=4)
 
+    # train neural network
     train(epoch)
     val_score = validation()
     scheduler.step(val_score)
-    max_score = max(val_score, max_score)
-    if epoch % args.save_freq == 0 or val_score == max_score or epoch in [4,162,166]:
+
+    if epoch % args.save_freq == 0:
         model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
         torch.save(model.state_dict(), model_file)
         print('Saved model')
