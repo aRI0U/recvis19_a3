@@ -33,6 +33,8 @@ parser.add_argument('--experiment', type=str, default=None, metavar='E',
                     help='folder where experiment outputs are located.')
 parser.add_argument('--save_freq', type=int, default=10, metavar='f',
                     help='frequency the model weights are saved')
+parser.add_argument('--student', type=int, default=None, metavar='S',
+                    help='frequency unlabeled data is added to dataset')
 
 args = parser.parse_args()
 use_cuda = torch.cuda.is_available()
@@ -121,23 +123,27 @@ def validation():
         100. * correct / len(val_loader.dataset)))
     return correct/len(val_loader.dataset)
 
-
+max_score = 0.80
 for epoch in range(1, args.epochs + 1):
-    if epoch%20 == 0:
+    if args.student and epoch%args.student == 0:
+        threshold = 1 - 10/epoch
         student_set = StudentDataset(
             os.path.join(args.data, 'test_images'),
             model,
             model.state_dict(),
-            ratio=epoch/200,
+            threshold=threshold,
             transform=data_transforms
         )
         concat_set = torch.utils.data.ConcatDataset([train_set, student_set])
+        log.info('%d elements added to dataset. Maximal uncertainty: %.3f' % (len(student_set), student_set.mu_max))
         train_loader = torch.utils.data.DataLoader(concat_set,
-            batch_size=args.batch_size, shuffle=True, num_workers=1)
+            batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     train(epoch)
     val_score = validation()
     scheduler.step(val_score)
-    if epoch % args.save_freq == 0:
+    max_score = max(val_score, max_score)
+    if epoch % args.save_freq == 0 or val_score == max_score or epoch in [4,162,166]:
         model_file = os.path.join(args.experiment, 'model_%d.pth' % epoch)
         torch.save(model.state_dict(), model_file)
+        print('Saved model')

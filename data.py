@@ -2,7 +2,7 @@ import glob
 from math import ceil
 import numpy as np
 import os
-from PIL import Image
+import PIL.Image as Image
 import zipfile
 
 import torch
@@ -34,7 +34,7 @@ data_transforms['test'] = transforms.Compose([
 ])
 
 class StudentDataset(torch.utils.data.Dataset):
-    def __init__(self, root, model, state_dict=None, ratio=1, transform=None):
+    def __init__(self, root, model, state_dict=None, threshold=0.5, transform=None):
         super(StudentDataset, self).__init__()
         self.root = root
         self.transform = transform
@@ -65,12 +65,11 @@ class StudentDataset(torch.utils.data.Dataset):
         scores = np.array(scores)
 
         # keep only the less uncertain results
-        last_idx = ceil(len(scores)*ratio)
+        last_idx = len(scores[scores<threshold])
         self.partition = np.argpartition(scores, last_idx)
         scores = scores[self.partition]
         self.classes = self.classes[self.partition][:last_idx]
-        max_uncertain = scores[last_idx] if last_idx < len(scores) else scores[-1]
-        print('%d elements added to dataset. Maximal uncertainty: %.3f\n' % (last_idx, max_uncertain))
+        self.mu_max = scores[last_idx-1]
 
     def __len__(self):
         return len(self.classes)
